@@ -1,0 +1,309 @@
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <style>
+    div {
+      display: block;
+      width: 80px;
+    }
+    #dataTable {
+      margin-left: auto;
+      margin-right: auto;
+      border-collapse: collapse;
+    }
+    #dataTable tr:nth-child(1) {
+      background-color: blue;
+      color: white;
+    }
+    #dataTable td {
+      padding: 3px;
+      border: 1px solid blue;
+    }
+    span {
+      margin-left: 10px;
+      margin-right: 50px;
+    }
+    #scoreBoard {
+      position: fixed;
+      color: white;
+      top: 40px;
+      left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <table id="dataTable">
+    <tr>
+      <td>Ball Speed</td>
+      <td>Block Speed</td>
+      <td>X-Difference</td>
+      <td>Y-Difference</td>
+      <td>Block Direction</td>
+      <td>Hit?</td>
+    </tr>
+  </table>
+  <div id="scoreBoard">
+    Score:<span id="score"></span> Total:<span id="total">0</span
+    ><input
+      id="capDataBtn"
+      type="button"
+      value="Start Capturing Data"
+      onclick="toggleCaptureData()"
+    />
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r127/three.min.js"></script>
+  <script>
+    var score = 0;
+    var total = 0;
+    var scoreDisp = document.querySelector("#score");
+    var totalDisp = document.querySelector("#total");
+    var scoreBoard = document.querySelector("#scoreBoard");
+    var capDataBtn = document.querySelector("#capDataBtn");
+    scoreDisp.innerText = 0;
+    var captureData = false;
+    function toggleCaptureData() {
+      if (captureData) {
+        capDataBtn.value = "Start Capturing Data";
+        captureData = false;
+      } else {
+        capDataBtn.value = "Stop Capturing Data";
+        captureData = true;
+      }
+    }
+    function incScore() {
+      score++;
+      scoreDisp.innerText = score;
+      scoreBoard.style.backgroundColor = "green";
+      setTimeout(function () {
+        scoreBoard.style.backgroundColor = "black";
+      }, 500);
+    }
+    function incTotal() {
+      total++;
+      totalDisp.innerText = total;
+    }
+    var table = document.querySelector("#dataTable");
+    function recordData(
+      ballSpeed,
+      blockSpeed,
+      xDiff,
+      yDiff,
+      blockDirection,
+      hitOrNot
+    ) {
+      if (!captureData) {
+        return;
+      }
+      var tr = document.createElement("tr");
+      var td1 = document.createElement("td");
+      td1.innerText = ballSpeed.toFixed(2);
+      var td2 = document.createElement("td");
+      td2.innerText = blockSpeed.toFixed(2);
+      var td3 = document.createElement("td");
+      td3.innerText = xDiff.toFixed(2);
+      var td4 = document.createElement("td");
+      td4.innerText = yDiff.toFixed(2);
+      var td5 = document.createElement("td");
+      if (blockDirection == -1) {
+        td5.innerText = "up";
+      } else {
+        td5.innerText = "down";
+      }
+
+      var td6 = document.createElement("td");
+      td6.innerText = hitOrNot;
+      if (hitOrNot) {
+        td6.style.backgroundColor = "green";
+      } else {
+        td6.style.backgroundColor = "red";
+      }
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      tr.appendChild(td4);
+      tr.appendChild(td5);
+      tr.appendChild(td6);
+      table.appendChild(tr);
+    }
+  </script>
+  <script>
+    let scene, camera, renderer;
+    let txts = [];
+    let ball, block, dummy_block;
+    let scale = 0.4;
+    let font_loader = new THREE.FontLoader();
+    let directionalLight = new THREE.DirectionalLight(0xffffff);
+    let texture = new THREE.TextureLoader().load(
+      "https://i.picsum.photos/id/1003/1181/1772.jpg?hmac=oN9fHMXiqe9Zq2RM6XT-RVZkojgPnECWwyEF1RvvTZk"
+    );
+    //let font = font_loader.parse("Lemon Friday_Regular.json");
+
+    let material = new THREE.MeshBasicMaterial({
+      color: 0xffaf00,
+      wireframe: true,
+    });
+    let pi = Math.PI;
+
+    function createSphere(a0, a1) {
+      let sphereGeometry = new THREE.SphereGeometry(
+        0.4 * scale,
+        50,
+        100,
+        a0,
+        a1
+      );
+      let spMaterial = new THREE.MeshLambertMaterial({
+        side: THREE.DoubleSide,
+        color: 0xffaf00,
+      });
+      let sp = new THREE.Mesh(sphereGeometry, spMaterial);
+      return sp;
+    }
+
+    function createCuboid(l, b, h) {
+      let cubeGeometry = new THREE.BoxGeometry(l, b, h, 100, 100);
+      let mat1 = new THREE.MeshPhongMaterial({
+        side: THREE.DoubleSide,
+        color: 0xffff00,
+        wireframe: true,
+        emissive: 0x25673d,
+        emissiveIntensity: 0.5,
+      });
+      let mat2 = new THREE.MeshStandardMaterial({
+        color: 0x00f0af,
+        wireframe: true,
+        emissive: 0x00f0af,
+        emissiveIntensity: 0.5,
+        metalness: 1,
+        roughness: 1,
+      });
+      let mat3 = new THREE.MeshBasicMaterial({ map: texture });
+      let mat4 = new THREE.MeshPhongMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        emissive: 0x05056f,
+        emissiveIntensity: 0.5,
+        metalness: 1,
+        roughness: 1,
+      });
+      let mat = mat3;
+      let cube = new THREE.Mesh(cubeGeometry, mat);
+      cube.position.x += 5;
+      return cube;
+    }
+
+    let init = function () {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0e0e00);
+      camera = new THREE.PerspectiveCamera(
+        30,
+        window.innerWidth / window.innerHeight,
+        1,
+        1000
+      );
+      ball = createSphere();
+      scene.add(ball);
+
+      scene.add(directionalLight);
+
+      block = createCuboid(1, 0.8, 3);
+      scene.add(block);
+
+      camera.position.z = 20;
+      camera.position.x = 3;
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      document.body.appendChild(renderer.domElement);
+    };
+    let tIndex = 0;
+    let tmp = 0;
+    let TO_PROCESS_PER_THREAD = 2;
+    var ballRate = 0.1;
+    var ballDir = 1;
+    var blockRate = 0.1;
+    var blockDir = 1;
+
+    let mainLoop = function () {
+      renderer.render(scene, camera);
+      ball.position.x += ballDir * ballRate;
+      block.position.y += blockDir * blockRate;
+      if (ball.position.x > 4.3) {
+        let yDff = Math.abs(block.position.y - ball.position.y);
+        if (yDff < 0.8) {
+          recordData(
+            dataArr[0],
+            dataArr[1],
+            dataArr[2],
+            dataArr[3],
+            dataArr[4],
+            true
+          );
+          incScore();
+          incTotal();
+        } else {
+          recordData(
+            dataArr[0],
+            dataArr[1],
+            dataArr[2],
+            dataArr[3],
+            dataArr[4],
+            false
+          );
+          incTotal();
+        }
+        //reverse direction
+        ballDir = -1;
+        //compute new rates
+        ballRate = 0.1 + Math.random() * (0.8 - 0.1);
+        blockRate = 0.1 + Math.random() * (0.8 - 0.1);
+      } else if (ball.position.x < -3) {
+        dataArr = [
+          ballRate,
+          blockRate,
+          ball.position.x - block.position.x,
+          ball.position.y - block.position.y,
+          blockDir,
+        ];
+        ballDir = 1;
+      }
+      if (block.position.y > 4) {
+        blockDir = -1;
+      } else if (block.position.y < -5) {
+        blockDir = 1;
+      }
+      requestAnimationFrame(mainLoop);
+    };
+
+    init();
+    var dataArr = [
+      ballRate,
+      blockRate,
+      ball.position.x - block.position.x,
+      ball.position.y - block.position.y,
+      blockDir,
+    ];
+    mainLoop();
+    var cnv = document.querySelector("canvas");
+    var isMouseDown = false;
+    cnv.addEventListener("mousedown", function () {
+      isMouseDown = true;
+    });
+    cnv.addEventListener("mouseup", function () {
+      isMouseDown = false;
+    });
+    cnv.addEventListener("mousemove", function (evt) {
+      //camera.position.x = evt.clientX;
+      console.log(
+        "(" +
+          parseInt(0.02 * evt.clientX) +
+          "," +
+          parseInt(0.02 * evt.clientY) +
+          ")"
+      );
+      if (isMouseDown) {
+        camera.position.x = parseInt(0.02 * (window.innerWidth - evt.clientX));
+        camera.position.y = parseInt(0.02 * evt.clientY) - 5;
+      }
+    });
+  </script>
+</body>
