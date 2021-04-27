@@ -1,0 +1,347 @@
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <style>
+    div {
+      display: block;
+      width: 80px;
+    }
+    #dataTable {
+      margin-left: auto;
+      margin-right: auto;
+      border-collapse: collapse;
+    }
+    #dataTable tr:nth-child(1) {
+      background-color: blue;
+      color: white;
+    }
+    #dataTable td {
+      padding: 3px;
+      border: 1px solid blue;
+    }
+    span {
+      margin-left: 10px;
+      margin-right: 50px;
+    }
+    #scoreBoard {
+      position: fixed;
+      color: white;
+      top: 40px;
+      left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <table id="dataTable">
+    <tr>
+      <td>Score</td>
+      <td>Ball Speed</td>
+      <td>Block Speed</td>
+      <td>X-Difference</td>
+      <td>Y-Difference</td>
+      <td>Block Direction</td>
+      <td>Hit?</td>
+    </tr>
+  </table>
+  <div id="scoreBoard">
+    Score:<span id="score"></span> Total:<span id="total">0</span
+    ><input
+      id="capDataBtn"
+      type="button"
+      value="Tabulate Captured Data"
+      onclick="toggleCaptureData()"
+    />
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r127/three.min.js"></script>
+  <script>
+    var score = 0;
+    var total = 0;
+    var scoreDisp = document.querySelector("#score");
+    var totalDisp = document.querySelector("#total");
+    var scoreBoard = document.querySelector("#scoreBoard");
+    var capDataBtn = document.querySelector("#capDataBtn");
+    scoreDisp.innerText = 0;
+    var captureData = false;
+    function toggleCaptureData() {
+      if (captureData) {
+        capDataBtn.value = "Tabulate Captured Data";
+        captureData = false;
+      } else {
+        capDataBtn.value = "Stop Tabulating";
+        captureData = true;
+      }
+    }
+    function incScore() {
+      score++;
+      scoreDisp.innerText = score;
+      scoreBoard.style.backgroundColor = "green";
+      setTimeout(function () {
+        scoreBoard.style.backgroundColor = "black";
+      }, 500);
+    }
+    function incTotal() {
+      total++;
+      totalDisp.innerText = total;
+    }
+    var table = document.querySelector("#dataTable");
+
+    function recordData(arr, hitOrNot) {
+      let ballSpeed = arr[0];
+      let blockSpeed = arr[1];
+      let xDiff = arr[2];
+      let yDiff = arr[3];
+      let blockDirection = arr[4];
+      if (!captureData) {
+        return;
+      }
+      var tr = document.createElement("tr");
+      var td0 = document.createElement("td");
+      td0.innerText = score;
+      var td1 = document.createElement("td");
+      td1.innerText = ballSpeed.toFixed(2);
+      var td2 = document.createElement("td");
+      td2.innerText = blockSpeed.toFixed(2);
+      var td3 = document.createElement("td");
+      td3.innerText = xDiff.toFixed(2);
+      var td4 = document.createElement("td");
+      td4.innerText = yDiff.toFixed(2);
+      var td5 = document.createElement("td");
+      if (blockDirection == -1) {
+        td5.innerText = "up";
+      } else {
+        td5.innerText = "down";
+      }
+
+      var td6 = document.createElement("td");
+      td6.innerText = hitOrNot;
+      if (hitOrNot) {
+        td6.style.backgroundColor = "green";
+      } else {
+        td6.style.backgroundColor = "red";
+      }
+      tr.appendChild(td0);
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      tr.appendChild(td4);
+      tr.appendChild(td5);
+      tr.appendChild(td6);
+      table.appendChild(tr);
+    }
+  </script>
+  <script>
+    let scene, camera, renderer;
+    let txts = [];
+    let ball, block, dummy_block;
+    let scale = 0.4;
+    let font_loader = new THREE.FontLoader();
+    let directionalLight = new THREE.DirectionalLight(0xffffff);
+    let texture = new THREE.TextureLoader().load(
+      "https://i.picsum.photos/id/1003/1181/1772.jpg?hmac=oN9fHMXiqe9Zq2RM6XT-RVZkojgPnECWwyEF1RvvTZk"
+    );
+    //let font = font_loader.parse("Lemon Friday_Regular.json");
+
+    let material = new THREE.MeshBasicMaterial({
+      color: 0xffaf00,
+      wireframe: true,
+    });
+    let pi = Math.PI;
+
+    function createSphere(a0, a1) {
+      let sphereGeometry = new THREE.SphereGeometry(
+        0.4 * scale,
+        50,
+        100,
+        a0,
+        a1
+      );
+      let spMaterial = new THREE.MeshLambertMaterial({
+        side: THREE.DoubleSide,
+        color: 0xffaf00,
+      });
+      let sp = new THREE.Mesh(sphereGeometry, spMaterial);
+      return sp;
+    }
+
+    function createCuboid(l, b, h) {
+      let cubeGeometry = new THREE.BoxGeometry(l, b, h, 100, 100);
+      let mat = new THREE.MeshBasicMaterial({ map: texture });
+      let cube = new THREE.Mesh(cubeGeometry, mat);
+      cube.position.x += 5;
+      return cube;
+    }
+
+    let init = function () {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0e0e00);
+      camera = new THREE.PerspectiveCamera(
+        30,
+        window.innerWidth / window.innerHeight,
+        1,
+        1000
+      );
+      ball = createSphere();
+      scene.add(ball);
+
+      scene.add(directionalLight);
+
+      block = createCuboid(1, 0.8, 3);
+      scene.add(block);
+
+      camera.position.z = 20;
+      camera.position.x = 3;
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      document.body.appendChild(renderer.domElement);
+    };
+    let tIndex = 0;
+    let tmp = 0;
+    let TO_PROCESS_PER_THREAD = 2;
+    var ballRate = 0.1;
+    var ballDir = 1;
+    var blockRate = 0.1;
+    var blockDir = 1;
+
+    var trainInputs = [];
+    var trainOutputs = [];
+    var NUM_INPUTS_COL = 4;
+    var TRAIN_TILL_SCORE = 30;
+    var modelTrained = false;
+    var trainingStarted = false;
+    const model = tf.sequential();
+    model.add(tf.layers.dense({ units: 1, inputShape: [NUM_INPUTS_COL] }));
+    //model.compile({ loss: "meanSquaredError", optimizer: "sgd" });
+    model.compile({
+      optimizer: tf.train.sgd(0.001),
+      loss: "meanSquaredError",
+      metrics: [tf.metrics.meanAbsoluteError],
+    });
+
+    function predictFor(a, b, c, d) {
+      const xTest = tf.tensor2d([a, b, c, d], [1, 4]);
+      var prediction = model.predict(xTest);
+      return prediction.dataSync()[0];
+    }
+
+    function populateTrainSets(dataArr) {
+      trainInputs.push(dataArr[1]);
+      trainInputs.push(dataArr[2]);
+      trainInputs.push(dataArr[3]);
+      trainInputs.push(dataArr[4]);
+      trainOutputs.push(dataArr[0]);
+    }
+
+    function trainTheModel() {
+      const xTrain = tf.tensor2d(trainInputs, [
+        trainInputs.length / NUM_INPUTS_COL,
+        NUM_INPUTS_COL,
+      ]);
+      const yTrain = tf.tensor2d(trainOutputs, [trainOutputs.length, 1]); //training Y data
+      var promise = model.fit(xTrain, yTrain, { epochs: 10 });
+      promise.then(() => {
+        alert("model trained");
+        modelTrained = true;
+      });
+    }
+
+    let trainModelWithFormula = false;
+
+    let mainLoop = function () {
+      renderer.render(scene, camera);
+      ball.position.x += ballDir * ballRate;
+      block.position.y += blockDir * blockRate;
+      if (ball.position.x > 4.3) {
+        //ball has reached the point from which it has to return
+        //reverse direction
+        ballDir = -1;
+        let yDff = Math.abs(block.position.y - ball.position.y);
+        incTotal();
+        if (yDff <= 1) {
+          //ball hit the block
+          if (score <= TRAIN_TILL_SCORE) {
+            //if we dont have enough success data, just keep adding more
+            populateTrainSets(dataArr);
+          } else {
+            //we have our training set now, so train the model
+            if (!trainingStarted) {
+              trainingStarted = true;
+              trainTheModel();
+            }
+          }
+          recordData(dataArr, true);
+          incScore();
+        } else {
+          recordData(dataArr, false);
+        }
+      } else if (ball.position.x < -3) {
+        //reset blocks position
+        block.position.y = -5;
+        blockDir = 1;
+        blockRate = 0.1 + Math.random() * (0.8 - 0.1);
+        //note the difference in positioning
+        xDiff = ball.position.x - block.position.x;
+        yDiff = ball.position.y - block.position.y;
+        if (modelTrained) {
+          //if model is trained get the rate for ball predicted by the model
+          var predictedBallRate = predictFor(blockRate, xDiff, yDiff, blockDir);
+          console.log(predictedBallRate);
+          ballRate = Math.abs(predictedBallRate);
+        } else {
+          //compute new rates using formula
+          if (trainModelWithFormula) {
+            var times = Math.abs(yDiff / blockRate);
+            ballRate = Math.abs(xDiff / times);
+          } else {
+            //compute ball rates sequencially
+            ballRate += 0.01;
+            if (ballRate > 0.8) {
+              ballRate = 0.1;
+            }
+          }
+        }
+        dataArr = [ballRate, blockRate, xDiff, yDiff, blockDir];
+        ballDir = 1;
+      }
+      //switch the direction of block if its near edge
+      if (block.position.y > 4) {
+        blockDir = -1;
+      } else if (block.position.y < -5) {
+        blockDir = 1;
+      }
+      requestAnimationFrame(mainLoop);
+    };
+
+    init();
+    var dataArr = [
+      ballRate,
+      blockRate,
+      ball.position.x - block.position.x,
+      ball.position.y - block.position.y,
+      blockDir,
+    ];
+    mainLoop();
+    /*var cnv = document.querySelector("canvas");
+    var isMouseDown = false;
+    cnv.addEventListener("mousedown", function () {
+      isMouseDown = true;
+    });
+    cnv.addEventListener("mouseup", function () {
+      isMouseDown = false;
+    });
+    cnv.addEventListener("mousemove", function (evt) {
+      //camera.position.x = evt.clientX;
+      console.log(
+        "(" +
+          parseInt(0.02 * evt.clientX) +
+          "," +
+          parseInt(0.02 * evt.clientY) +
+          ")"
+      );
+      if (isMouseDown) {
+        camera.position.x = parseInt(0.02 * (window.innerWidth - evt.clientX));
+        camera.position.y = parseInt(0.02 * evt.clientY) - 5;
+      }
+    });*/
+  </script>
+</body>
