@@ -9,3 +9,5 @@ This proect will be extended, soon I will be adding another file with supervised
 Here's how the captured data looks:
 
 ![image](https://user-images.githubusercontent.com/20777854/116068428-dd734380-a6a7-11eb-99af-fcbb834a7cb5.png)
+
+[Update] Added the file containing teh supervised one. It has two modes of training , one where training set is prepared from formula, so in this case we only see success cases while training, the anothe case is sequencial where the ball gets sequencial times, in this way of training we see both success and failed cases however only success cases are used as training set.
